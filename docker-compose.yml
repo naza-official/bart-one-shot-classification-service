@@ -1,0 +1,13 @@
+version: "3.8"
+
+services:
+  titles-classifier:
+    image: titles-classification:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "127.0.0.1:8000:8000"
+    environment:
+      - NUMBER_GUNICORN_WORKERS=1
+    restart: unless-stopped
