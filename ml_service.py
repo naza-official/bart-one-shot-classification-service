@@ -238,12 +238,6 @@ def signal_handler(signum, frame):
 def shutdown_gracefully():
     global executor, shutdown_event
 
-    def force_exit():
-        logger.error("Graceful shutdown timed out. Forcing exit.")
-        sys.exit(0)
-    timer = threading.Timer(10.0, force_exit)
-    timer.start()
-
     logger.info("Initiating graceful shutdown...")
     shutdown_event.set()
 
@@ -255,11 +249,31 @@ def shutdown_gracefully():
                 job_cancel_events[job_id].set()
 
     logger.info("Shutting down ProcessPoolExecutor...")
-    executor.shutdown(wait=True, cancel_futures=True)
+    try:
+        executor.shutdown(wait=False, cancel_futures=True)
+        
+        time.sleep(1)
+        
+        if hasattr(executor, '_processes') and executor._processes:
+            for pid, process in executor._processes.items():
+                if process.is_alive():
+                    logger.info(f"Terminating process {pid}")
+                    process.terminate()
+            
+            time.sleep(0.5)
+            
+            for pid, process in executor._processes.items():
+                if process.is_alive():
+                    logger.info(f"Killing process {pid}")
+                    process.kill()
+    
+    except Exception as e:
+        logger.error(f"Error during executor shutdown: {e}")
+    
     logger.info("ProcessPoolExecutor shutdown complete")
-
-    timer.cancel()  
-
+    
+    sys.exit(0)
+    
 signal.signal(signal.SIGINT, signal_handler)
 signal.signal(signal.SIGTERM, signal_handler)
 
