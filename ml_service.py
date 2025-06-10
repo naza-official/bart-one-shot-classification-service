@@ -55,7 +55,7 @@ def get_classifier():
     DEVICE = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
     classifier = pipeline(
         "zero-shot-classification",
-        model="roberta-large-mnli",
+        model="valhalla/distilbart-mnli-12-3",
         device=DEVICE
     )
     return classifier
