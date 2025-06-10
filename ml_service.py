@@ -11,6 +11,7 @@ import os
 import signal
 import sys
 import atexit
+from functools import lru_cache
 
 MAX_WORKERS = int(os.environ.get('MAX_WORKERS', 1))
 
@@ -47,6 +48,18 @@ CLEANUP_INTERVAL = 300
 RESULT_TTL = 3600
 shutdown_event = threading.Event()
 
+@lru_cache(maxsize=1)
+def get_classifier():
+    import torch
+    from transformers import pipeline
+    DEVICE = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
+    classifier = pipeline(
+        "zero-shot-classification",
+        model="roberta-large-mnli",
+        device=DEVICE
+    )
+    return classifier
+
 def cleanup_jobs():
     while not shutdown_event.is_set():
         now = time.time()
@@ -65,8 +78,6 @@ def cleanup_jobs():
         shutdown_event.wait(timeout=CLEANUP_INTERVAL)
 
 def process_classification_job(job_id: str, titles: List[str], categories: List[str]) -> Dict[str, Any]:
-    import torch
-    from transformers import pipeline
     import io
 
     log_stream = io.StringIO()
@@ -78,9 +89,8 @@ def process_classification_job(job_id: str, titles: List[str], categories: List[
 
     logger.info(f"Starting classification job {job_id} with {len(titles)} titles")
 
-    DEVICE = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
-    classifier = pipeline("zero-shot-classification", model="facebook/bart-large-mnli", device=0 if DEVICE.type != "cpu" else -1)
-
+    classifier = get_classifier()
+    
     try:
         results = []
         for i, title in enumerate(titles):

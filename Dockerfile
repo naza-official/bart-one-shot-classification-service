@@ -25,7 +25,7 @@ RUN python3 -m venv /app/venv \
 ENV PATH="/app/venv/bin:$PATH"
 
 RUN mkdir -p /app/models
-RUN python -c "from transformers import pipeline; pipeline('zero-shot-classification', model='facebook/bart-large-mnli')"
+RUN python -c "from transformers import pipeline; pipeline('zero-shot-classification', model='roberta-large-mnli')"
 
 
 COPY ml_service.py .
